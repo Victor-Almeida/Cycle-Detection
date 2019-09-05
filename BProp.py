@@ -1,8 +1,3 @@
-import random
-import math
-import sys
-from tqdm import tqdm as tqdm_no_notebook
-from tqdm import tqdm_notebook
 import networkx as nx
 from tqdm import tqdm
 import time
@@ -14,14 +9,16 @@ class BPGraph(nx.DiGraph):
         self.binary_antecessors = []
         self.binary_successors = []
     
-    def __propagate(self, index_to):        
+    def __propagate(self, index_to, visited = 0):        
+        visited = visited | 1 << index_to
         if(self.binary_successors[index_to] > 0):
             for successor in self.__get_indexes(self.binary_successors[index_to]): 
                 self.binary_antecessors[successor] = self.binary_antecessors[successor] | self.binary_antecessors[index_to]
                 self.binary_successors[index_to] = self.binary_successors[index_to] | self.binary_successors[successor]
                 
             for successor in self.__get_indexes(self.binary_successors[index_to]): 
-                self.__propagate(successor)
+                if 1 << successor & visited != 0:
+                    self.__propagate(successor, visited)
             
     def __get_indexes(self, bin_sum):
         num = bin_sum
