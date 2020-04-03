@@ -1,4 +1,4 @@
-# Cycle Detection
+# BProp
 An algorithm developed as a scientific research at Fluminense Federal University (UFF) to detect and prevent cycles in an incremental directed graph.The paper will be linked here as soon as it's released.<br/>
 It uses Networkx (https://networkx.github.io/) and tqdm (https://tqdm.github.io/) to keep track of the progress on large graphs.
 
