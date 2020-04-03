@@ -6,15 +6,18 @@ class BPGraph(nx.DiGraph):
     def __init__(self):
         super().__init__()
         self.next_index = 0
-        self.binary_antecessors = []
+        self.binary_predecessors = []
         self.binary_successors = []
+        self.neighbors = []
+    
+    def neighbors(self, index):
+        return list(self[index])
     
     def __propagate(self, index_to, visited = 0):        
         visited = visited | 1 << index_to
         if(self.binary_successors[index_to] > 0):
             for successor in self.__get_indexes(self.binary_successors[index_to]): 
-                self.binary_antecessors[successor] = self.binary_antecessors[successor] | self.binary_antecessors[index_to]
-                self.binary_successors[index_to] = self.binary_successors[index_to] | self.binary_successors[successor]
+                self.binary_predecessors[successor] = self.binary_predecessors[successor] | self.binary_predecessors[index_to]
                 
             for successor in self.__get_indexes(self.binary_successors[index_to]): 
                 if 1 << successor & visited != 0:
@@ -40,8 +43,9 @@ class BPGraph(nx.DiGraph):
     def add_node(self):
         super().add_node(self.next_index)
         self.next_index = self.next_index + 1
-        self.binary_antecessors.append(0)
+        self.binary_predecessors.append(0)
         self.binary_successors.append(0)
+        self.neighbors.append(0)
         return self.next_index
     
     def add_n_nodes(self, n):
@@ -70,36 +74,34 @@ class BPGraph(nx.DiGraph):
         else:
             index_from = node_from
             index_to = node_to
+
         
-        antecessors = self.binary_antecessors[index_from] | (1 << index_from)
-        successors = self.binary_successors[index_to] | (1 << index_to)
-        
-        if(self.binary_antecessors[index_from] & (1 << index_to) or # if the target edge is an ancestral of the origin
-          self.binary_antecessors[index_from] & self.binary_successors[index_to]):            
+        if(self.binary_predecessors[index_from] & (1 << index_to) or # if the target edge is an predecessorof the origin
+          self.binary_predecessors[index_from] & self.binary_successors[index_to]):  # if the target edge has a successor that is an predecessorof the starting edge
             return False
         else:        
-            self.binary_antecessors[index_to] = self.binary_antecessors[index_to] | antecessors
-            self.binary_successors[index_from] = self.binary_successors[index_from] | successors
+            self.binary_predecessors[index_to] = self.binary_predecessors[index_to] | self.binary_predecessors[index_from] | (1 << index_from)
+            self.neighbors[index_from] = self.neighbors[index_from] | (1 << index_to)
             self.__propagate(index_to)
-            #self.__propagate(index_from)
             super().add_edge(index_from, index_to)            
             return True
         
 ######################### DFS #############################################
 
-    def classic_dfs(self, start, visited):
+    def classic_dfs(self, start, target, visited):
         cycle = False
-        for next_edge in list(self.neighbors(start)):
-            if next_edge in visited:
+        for next_edge in list(self[start]):
+            if next_edge == target:
                 return True
-            else:
+            elif next_edge not in visited:
                 visited.append(next_edge)
-                cycle = self.classic_dfs(next_edge, visited)
+                cycle = self.classic_dfs(next_edge, target, visited)
                 if cycle:
                     return True
                 else:
-                    visited.pop()
-                
+                    visited.pop()  
+                    if visited == []:
+                        return False
         return False
     
     def incremental_dfs(self, edges):
@@ -116,7 +118,7 @@ class BPGraph(nx.DiGraph):
     def add_dfs_edge(self, node_from, node_to):
         if node_from == node_to:
             return False
-        elif self.classic_dfs(node_to, [node_from, node_to]):
+        elif self.classic_dfs(node_to, node_from, [node_to]):
             return False
         else:
             super().add_edge(node_from, node_to)
@@ -124,19 +126,22 @@ class BPGraph(nx.DiGraph):
         
 ######################### BFS #############################################
 
-    def classic_bfs(self, start, visited):
+    def classic_bfs(self, start, target, visited):
         cycle = False
-        for next_edge in list(self.neighbors(start)):
-            if next_edge in visited:
+        for next_edge in list(self[start]):
+            if next_edge == target:
                 return True
             
-        for next_edge in list(self.neighbors(start)):
-            visited.append(next_edge)
-            cycle = self.classic_bfs(next_edge, visited)
-            if cycle:
-                return True
-            else:
-                visited.pop()
+        for next_edge in list(self[start]):
+            if next_edge not in visited:
+                visited.append(next_edge)
+                cycle = self.classic_bfs(next_edge, target, visited)
+                if cycle:
+                    return True
+                else:
+                    visited.pop()
+                    if visited == []:
+                        return False
             
         return False
     
@@ -154,7 +159,7 @@ class BPGraph(nx.DiGraph):
     def add_bfs_edge(self, node_from, node_to):
         if node_from == node_to:
             return False
-        elif self.classic_bfs(node_to, [node_from, node_to]):
+        elif self.classic_bfs(node_to, node_from, [node_to]):
             return False
         else:
             super().add_edge(node_from, node_to)
